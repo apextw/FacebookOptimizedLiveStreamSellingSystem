@@ -11,11 +11,15 @@
 |
 */
 
-//Route::get('/', function () {
-//    return view('welcome');
-//});
-//Route::post('/payments/{thirdPartyPaymentService}', 'PaymentsController@pay');
+Route::get('/', function () {
+    return view('welcome');
+});
+Route::post('/payments/{thirdPartyPaymentService}', 'PaymentsController@pay');
 
 Route::get('FBToken', function(){
     return view('FBtoken');
+});
+
+Route::get('paypal', function(){
+    return view('PayPal');
 });

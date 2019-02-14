@@ -11,12 +11,12 @@
     <form class="paypal" action="/api/paypal/2" method="post" id="paypal_form">
        @csrf()
         <input type="hidden" name="cmd" value="_xclick" />
-        {{--<input type="hidden" name="no_note" value="1" />--}}
-        {{--<input type="hidden" name="lc" value="UK" />--}}
-        {{--<input type="hidden" name="bn" value="PP-BuyNowBF:btn_buynow_LG.gif:NonHostedGuest" />--}}
-        {{--<input type="hidden" name="first_name" value="Customer's First Name" />--}}
-        {{--<input type="hidden" name="last_name" value="Customer's Last Name" />--}}
-        {{--<input type="hidden" name="payer_email" value="customer@example.com" />--}}
+        <input type="hidden" name="no_note" value="1" />
+        <input type="hidden" name="lc" value="UK" />
+        <input type="hidden" name="bn" value="PP-BuyNowBF:btn_buynow_LG.gif:NonHostedGuest" />
+        <input type="hidden" name="first_name" value="Customer's First Name" />
+        <input type="hidden" name="last_name" value="Customer's Last Name" />
+        <input type="hidden" name="payer_email" value="customer@example.com" />
         <input type="checkbox" name="order_id[]" value="1"/>
         <input type="checkbox" name="order_id[]" value="2"/>
         <input type="checkbox" name="order_id[]" value="3"/>

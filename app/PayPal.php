@@ -14,7 +14,7 @@ use PaypalIPN;
 
 class PayPal extends Model {
 
-    protected $fillable = ['txn_id', 'txn_type', 'payment_date', 'status'];
+    protected $fillable = ['txn_id', 'txn_type', 'payment_date', 'status', 'expiry_time'];
 
     public function orderRelations()
     {
@@ -101,6 +101,7 @@ class PayPal extends Model {
 
         // Redirect to paypal IPN
         header('location:' . $paypalUrl . '?' . $queryString);
+        exit();
     }
 
     public function listen(Request $request)

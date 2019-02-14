@@ -3,6 +3,7 @@
 namespace App;
 
 use AllInOne;
+use App\Mail\PaymentReceived;
 use Carbon\Carbon;
 use CheckMacValue;
 use EncryptType;
@@ -10,9 +11,10 @@ use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use PaymentMethod;
 
-class PaymentServiceOrders extends Model {
+class AllPay extends Model {
 
     protected $fillable = ['status', 'expiry_time'];
 
@@ -97,24 +99,24 @@ class PaymentServiceOrders extends Model {
         DB::beginTransaction();
         try
         {
-            $payment_service_order = new self();
+            $AllPay = new self();
 
-            $payment_service_order->user_id = $toBeSavedInfo['user_id'];
-            $payment_service_order->payment_service_id = $toBeSavedInfo['payment_service']->id;
-            $payment_service_order->expiry_time = $toBeSavedInfo['expiry_time'];
-            $payment_service_order->MerchantID = env('MERCHANTID');
-            $payment_service_order->MerchantTradeNo = $toBeSavedInfo['merchant_trade_no'];
-            $payment_service_order->MerchantTradeDate = $toBeSavedInfo['merchant_trade_date'];
-            $payment_service_order->total_amount = $toBeSavedInfo['total_amount'];
-            $payment_service_order->TradeDesc = $toBeSavedInfo['trade_desc'];
-            $payment_service_order->ItemName = $toBeSavedInfo['orders_name'];
-            $payment_service_order->save();
+            $AllPay->user_id = $toBeSavedInfo['user_id'];
+            $AllPay->payment_service_id = $toBeSavedInfo['payment_service']->id;
+            $AllPay->expiry_time = $toBeSavedInfo['expiry_time'];
+            $AllPay->MerchantID = env('MERCHANTID');
+            $AllPay->MerchantTradeNo = $toBeSavedInfo['merchant_trade_no'];
+            $AllPay->MerchantTradeDate = $toBeSavedInfo['merchant_trade_date'];
+            $AllPay->total_amount = $toBeSavedInfo['total_amount'];
+            $AllPay->TradeDesc = $toBeSavedInfo['trade_desc'];
+            $AllPay->ItemName = $toBeSavedInfo['orders_name'];
+            $AllPay->save();
 
             foreach ($toBeSavedInfo['orders'] as $order)
             {
                 $order_relations = new OrderRelations();
                 $order_relations->payment_service_id = $toBeSavedInfo['payment_service']->id;
-                $order_relations->payment_service_order_id = $payment_service_order->id;
+                $order_relations->payment_service_order_id = $AllPay->id;
                 $order_relations->order_id = $order->id;
                 $order_relations->save();
             }
@@ -148,7 +150,7 @@ class PaymentServiceOrders extends Model {
 
     public static function deleteExpiredOrders()
     {
-        $toBeDeletedPaymentServiceOrders = (new PaymentServiceOrders)->where('expiry_time', '<', Carbon::now());
+        $toBeDeletedPaymentServiceOrders = (new AllPay)->where('expiry_time', '<', Carbon::now());
         foreach ($toBeDeletedPaymentServiceOrders->get() as $toBeDeletedPaymentServiceOrder)
         {
             $orderRelations = $toBeDeletedPaymentServiceOrder->orderRelations;
@@ -156,5 +158,26 @@ class PaymentServiceOrders extends Model {
                 $orderRelation->delete();
         }
         $toBeDeletedPaymentServiceOrders->delete();
+    }
+
+    public function listen(Request $request)
+    {
+        if (AllPay::checkIfCheckMacValueCorrect($request) && AllPay::checkIfPaymentPaid($request->RtnCode))
+        {
+            $paymentServiceOrder = (new AllPay)->where('MerchantTradeNo', $request->MerchantTradeNo)->first();
+            $paymentServiceOrder->update(['status' => 1, 'expiry_time' => null]);
+
+            $orderRelations = $paymentServiceOrder->where('MerchantTradeNo', $request->MerchantTradeNo)->first()->orderRelations->where('payment_service_id', 1);
+            Order::updateStatus($orderRelations);
+
+            $user_id = $paymentServiceOrder->user->id;
+            $payerEmail = Helpers::getFacebookResources(Token::getLatestToken($user_id))->getEmail();
+
+            if ($payerEmail !== null)
+                Mail::to($payerEmail)->send(new PaymentReceived($paymentServiceOrder, $orderRelations));
+
+            return true;
+        }
+        return false;
     }
 }

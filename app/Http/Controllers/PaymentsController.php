@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Helpers;
 use App\Mail\PaymentReceived;
 use App\Order;
-use App\PaymentServiceOrders;
+use App\AllPay;
 use App\PayPal;
 use App\ThirdPartyPaymentService;
 use App\Token;
@@ -17,27 +17,15 @@ class PaymentsController extends Controller {
 
     public function listenPayPal(Request $request)
     {
-        (new PayPal)->listen($request);
+        $PayPal = new PayPal();
+        $PayPal->listen($request);
     }
 
     public function listenAllPay(Request $request)
     {
-        if (PaymentServiceOrders::checkIfCheckMacValueCorrect($request) && PaymentServiceOrders::checkIfPaymentPaid($request->RtnCode))
-        {
-            $paymentServiceOrder = (new PaymentServiceOrders)->where('MerchantTradeNo', $request->MerchantTradeNo)->first();
-            $paymentServiceOrder->update(['status' => 1, 'expiry_time' => null]);
-
-            $orderRelations = $paymentServiceOrder->where('MerchantTradeNo', $request->MerchantTradeNo)->first()->orderRelations->where('payment_service_id', 1);
-            Order::updateStatus($orderRelations);
-
-            $user_id = $paymentServiceOrder->user->id;
-            $payerEmail = Helpers::getFacebookResources(Token::getLatestToken($user_id))->getEmail();
-
-            if ($payerEmail !== null)
-            Mail::to($payerEmail)->send(new PaymentReceived($paymentServiceOrder, $orderRelations));
-
+        $AllPay = new AllPay();
+        if($AllPay->listen($request))
             return '1|OK';
-        }
     }
 
     public function pay(Request $request, ThirdPartyPaymentService $thirdPartyPaymentService)
@@ -81,11 +69,11 @@ class PaymentsController extends Controller {
         switch ($thirdPartyPaymentService->id)
         {
             case 1:
-                $error = (new PaymentServiceOrders)->make($toBeSavedInfo, $request);
+                $error = (new AllPay)->make($toBeSavedInfo, $request);
                 if($error)
                     return Helpers::result(false, $error,400);
 
-                return (new PaymentServiceOrders())->send($toBeSavedInfo, $request);
+                return (new AllPay())->send($toBeSavedInfo, $request);
                 break;
 
             case 2:
